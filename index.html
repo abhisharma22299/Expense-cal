@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SplitEase — Smart Expense Splitter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0e0f13;
+      --card: #16181f;
+      --card2: #1c1f29;
+      --border: #2a2e3d;
+      --accent: #6ee7b7;
+      --red: #fb7185;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --input-bg: #1e2130;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 5rem;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -5%, rgba(110,231,183,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 95% 95%, rgba(244,114,182,0.05) 0%, transparent 60%);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.2rem;
+    }
+    header .eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 800;
+      background: linear-gradient(130deg, var(--text) 40%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { color: var(--muted); font-size: 0.88rem; margin-top: 0.4rem; }
+
+    /* Card */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 0 0 1px #2a2e3d, 0 24px 60px rgba(0,0,0,0.5);
+      padding: 1.8rem 2rem;
+      max-width: 820px;
+      margin: 0 auto 1.4rem;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* Total expense row */
+    .total-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.6rem;
+    }
+
+    .field-wrap { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field-wrap .field-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      padding: 0.72rem 1rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input::placeholder { color: var(--muted); font-size: 0.85rem; }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,231,183,0.1); }
+    input.error { border-color: var(--red) !important; box-shadow: 0 0 0 3px rgba(251,113,133,0.12) !important; }
+    input.auto-filled { border-color: var(--yellow) !important; box-shadow: 0 0 0 3px rgba(251,191,36,0.1) !important; background: rgba(251,191,36,0.05) !important; }
+
+    /* People list */
+    #people-list { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 0; }
+
+    .person-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      animation: slideIn 0.22s ease;
+    }
+    @keyframes slideIn {
+      from { opacity:0; transform:translateY(-7px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .optional-tag {
+      position: relative;
+    }
+    .optional-tag input { padding-right: 5.5rem; }
+    .optional-tag .opt-label {
+      position: absolute;
+      right: 0.8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      pointer-events: none;
+      background: var(--input-bg);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+    .btn:hover  { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.55rem 0.8rem;
+      font-size: 0.95rem;
+    }
+    .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+
+    .btn-secondary {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.72rem 1.3rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0c10;
+      padding: 0.82rem 2rem;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 20px rgba(110,231,183,0.22);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 28px rgba(110,231,183,0.35); }
+
+    .btn-danger {
+      background: rgba(251,113,133,0.1);
+      border: 1px solid rgba(251,113,133,0.22);
+      color: var(--red);
+      padding: 0.72rem 1.3rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.7rem;
+      margin-top: 1.4rem;
+      flex-wrap: wrap;
+    }
+
+    /* Error banner */
+    .err-banner {
+      display: none;
+      background: rgba(251,113,133,0.08);
+      border: 1px solid rgba(251,113,133,0.25);
+      border-radius: 10px;
+      padding: 0.7rem 1rem;
+      color: var(--red);
+      font-size: 0.83rem;
+      margin-top: 1rem;
+    }
+    .err-banner.show { display: flex; align-items: flex-start; gap: 0.5rem; }
+
+    /* Auto-fill notice */
+    .autofill-notice {
+      display: none;
+      background: rgba(251,191,36,0.07);
+      border: 1px solid rgba(251,191,36,0.22);
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      color: var(--yellow);
+      font-size: 0.82rem;
+      margin-top: 0.9rem;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .autofill-notice.show { display: flex; }
+
+    /* Results */
+    #results { display: none; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.6rem;
+    }
+    .stat-box {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+    }
+    .stat-box .lbl {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+    .stat-box .val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.55rem;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+    thead th {
+      background: var(--card2);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    tbody tr { border-top: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    td { padding: 0.8rem 1rem; font-family: 'DM Mono', monospace; font-size: 0.87rem; white-space: nowrap; }
+    td:first-child { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.9rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.22rem 0.65rem;
+      border-radius: 999px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+    }
+    .badge-green   { background: rgba(52,211,153,0.1);  color: var(--green);  border: 1px solid rgba(52,211,153,0.2);  }
+    .badge-red     { background: rgba(251,113,133,0.1); color: var(--red);    border: 1px solid rgba(251,113,133,0.2); }
+    .badge-neutral { background: rgba(107,114,128,0.12); color: var(--muted); border: 1px solid var(--border); }
+    .badge-auto    { background: rgba(251,191,36,0.1);  color: var(--yellow); border: 1px solid rgba(251,191,36,0.2);  font-size: 0.68rem; margin-left: 0.3rem; }
+
+    /* Settlement */
+    #settlement-list { display: flex; flex-direction: column; gap: 0.65rem; }
+
+    .settle-item {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1.2rem;
+      font-size: 0.9rem;
+      animation: fadeUp 0.3s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(5px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .settle-item .payer    { color: var(--red);   font-weight: 700; }
+    .settle-item .receiver { color: var(--green); font-weight: 700; }
+    .settle-item .arrow    { color: var(--muted); }
+    .settle-item .amt {
+      margin-left: auto;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      background: rgba(110,231,183,0.07);
+      border: 1px solid rgba(110,231,183,0.15);
+      color: var(--accent);
+      padding: 0.2rem 0.65rem;
+      border-radius: 6px;
+    }
+
+    .no-settle {
+      text-align: center;
+      padding: 1.4rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .no-settle span { font-size: 1.4rem; display: block; margin-bottom: 0.35rem; }
+
+    @media (max-width: 560px) {
+      .total-row { grid-template-columns: 1fr; }
+      .person-row { grid-template-columns: 1fr 1fr auto; }
+      .stats-row { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; }
+      .settle-item { flex-wrap: wrap; }
+      .settle-item .amt { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">✦ Expense Splitter</div>
+  <h1>SplitEase</h1>
+  <p>Enter total expense, add people, and leave one amount blank to auto-calculate.</p>
+</header>
+
+<!-- Input Card -->
+<div class="card">
+  <div class="section-label">Trip / Bill Details</div>
+
+  <div class="total-row">
+    <div class="field-wrap">
+      <div class="field-label">Total Expense <span style="color:var(--red)">*</span></div>
+      <input type="number" id="total-input" placeholder="e.g. 5000" min="0" step="any"/>
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">Currency</div>
+      <input type="text" id="currency-input" placeholder="₹" value="₹" style="max-width:120px"/>
+    </div>
+  </div>
+
+  <div class="section-label">Participants</div>
+  <div id="people-list"></div>
+
+  <div class="err-banner" id="err-banner">
+    <span>⚠</span><span id="err-text">Please fix errors before calculating.</span>
+  </div>
+  <div class="autofill-notice" id="autofill-notice">
+    <span>⚡</span><span id="autofill-text"></span>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="addPerson()">＋ Add Person</button>
+    <button class="btn btn-primary"   onclick="calculate()">Calculate Split</button>
+    <button class="btn btn-danger"    onclick="resetAll()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- Results Card -->
+<div class="card" id="results">
+  <div class="section-label">Summary</div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="lbl">Total Expense</div>
+      <div class="val" id="res-total">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="lbl">Per Person Share</div>
+      <div class="val" id="res-share">—</div>
+    </div>
+  </div>
+
+  <div class="section-label">Breakdown</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Paid</th>
+          <th>Fair Share</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody id="res-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="section-label" style="margin-top:1.8rem">Settlement Plan</div>
+  <div id="settlement-list"></div>
+</div>
+
+<script>
+  let rowId = 0;
+  let currency = '₹';
+
+  function fmt(n) {
+    return currency + Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function addPerson(name = '', amount = '') {
+    rowId++;
+    const id = rowId;
+    const list = document.getElementById('people-list');
+    const row = document.createElement('div');
+    row.className = 'person-row';
+    row.id = `row-${id}`;
+    row.innerHTML = `
+      <input type="text"   id="name-${id}"   placeholder="Name (e.g. Priyank)" value="${name}"/>
+      <div class="optional-tag">
+        <input type="number" id="amount-${id}" placeholder="Amount paid" value="${amount}" min="0" step="any"/>
+        <span class="opt-label">optional</span>
+      </div>
+      <button class="btn btn-ghost" title="Remove" onclick="removeRow(${id})">✕</button>
+    `;
+    list.appendChild(row);
+  }
+
+  function removeRow(id) {
+    const rows = document.querySelectorAll('.person-row');
+    if (rows.length <= 1) return;
+    document.getElementById(`row-${id}`)?.remove();
+  }
+
+  function resetAll() {
+    document.getElementById('people-list').innerHTML = '';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('err-banner').classList.remove('show');
+    document.getElementById('autofill-notice').classList.remove('show');
+    document.getElementById('total-input').value = '';
+    document.getElementById('total-input').classList.remove('error');
+    rowId = 0;
+    addPerson();
+    addPerson();
+  }
+
+  function showError(msg) {
+    const b = document.getElementById('err-banner');
+    document.getElementById('err-text').textContent = msg;
+    b.classList.add('show');
+  }
+
+  function clearError() {
+    document.getElementById('err-banner').classList.remove('show');
+  }
+
+  function calculate() {
+    clearError();
+    document.getElementById('autofill-notice').classList.remove('show');
+
+    currency = document.getElementById('currency-input').value.trim() || '₹';
+
+    // Validate total
+    const totalInput = document.getElementById('total-input');
+    const totalVal = parseFloat(totalInput.value);
+    totalInput.classList.remove('error');
+
+    if (isNaN(totalVal) || totalVal <= 0) {
+      totalInput.classList.add('error');
+      showError('Please enter a valid Total Expense greater than 0.');
+      return;
+    }
+
+    // Gather rows
+    const rows = document.querySelectorAll('.person-row');
+    const people = [];
+    let hasError = false;
+
+    rows.forEach(row => {
+      const id = row.id.replace('row-', '');
+      const nameEl   = document.getElementById(`name-${id}`);
+      const amountEl = document.getElementById(`amount-${id}`);
+      nameEl.classList.remove('error');
+      amountEl.classList.remove('error', 'auto-filled');
+
+      const name = nameEl.value.trim();
+      const rawAmt = amountEl.value.trim();
+      const amt = rawAmt === '' ? null : parseFloat(rawAmt);
+
+      if (!name) { nameEl.classList.add('error'); hasError = true; return; }
+      if (amt !== null && (isNaN(amt) || amt < 0)) {
+        amountEl.classList.add('error'); hasError = true; return;
+      }
+
+      people.push({ id, name, paid: amt, el: amountEl });
+    });
+
+    if (hasError || people.length === 0) {
+      showError('Please fix highlighted fields: check for empty names or invalid amounts.');
+      return;
+    }
+
+    // Count blanks
+    const blanks = people.filter(p => p.paid === null);
+    if (blanks.length > 1) {
+      blanks.forEach(p => p.el.classList.add('error'));
+      showError(`Only ONE person can leave their amount empty. You have ${blanks.length} empty fields.`);
+      return;
+    }
+
+    const sumEntered = people.filter(p => p.paid !== null).reduce((s, p) => s + p.paid, 0);
+
+    // Validate: sum of entered must not exceed total
+    if (sumEntered > totalVal + 0.001) {
+      showError(`Sum of entered amounts (${fmt(sumEntered)}) exceeds the Total Expense (${fmt(totalVal)}). Please check values.`);
+      return;
+    }
+
+    // Auto-fill missing
+    let autoFilledName = null;
+    if (blanks.length === 1) {
+      const missing = totalVal - sumEntered;
+      if (missing < -0.001) {
+        showError(`The remaining amount for ${blanks[0].name} would be negative. Sum of others exceeds total.`);
+        return;
+      }
+      blanks[0].paid = Math.max(0, missing);
+      blanks[0].el.value = blanks[0].paid.toFixed(2);
+      blanks[0].el.classList.add('auto-filled');
+      autoFilledName = blanks[0].name;
+    }
+
+    if (autoFilledName) {
+      document.getElementById('autofill-text').textContent =
+        `⚡ Auto-calculated: ${autoFilledName}'s amount was set to ${fmt(people.find(p=>p.name===autoFilledName).paid)}.`;
+      document.getElementById('autofill-notice').classList.add('show');
+    }
+
+    const total = totalVal;
+    const share = total / people.length;
+
+    // Balances
+    const balances = people.map(p => ({ name: p.name, paid: p.paid, auto: p.name === autoFilledName, balance: p.paid - share }));
+
+    // Render stats
+    document.getElementById('res-total').textContent = fmt(total);
+    document.getElementById('res-share').textContent = fmt(share);
+
+    // Render table
+    const tbody = document.getElementById('res-tbody');
+    tbody.innerHTML = '';
+    balances.forEach(p => {
+      const diff = p.balance;
+      let badge;
+      if (diff > 0.005)       badge = `<span class="badge badge-green">+${fmt(diff)} gets back</span>`;
+      else if (diff < -0.005) badge = `<span class="badge badge-red">−${fmt(Math.abs(diff))} owes</span>`;
+      else                     badge = `<span class="badge badge-neutral">Settled ✓</span>`;
+      const autoTag = p.auto ? `<span class="badge badge-auto">AUTO</span>` : '';
+      tbody.innerHTML += `
+        <tr>
+          <td>${p.name}${autoTag}</td>
+          <td>${fmt(p.paid)}</td>
+          <td>${fmt(share)}</td>
+          <td>${badge}</td>
+        </tr>`;
+    });
+
+    // Minimize transactions — greedy two-pointer
+    const creditors = balances.filter(p => p.balance > 0.005).map(p => ({...p})).sort((a,b) => b.balance - a.balance);
+    const debtors   = balances.filter(p => p.balance < -0.005).map(p => ({...p})).sort((a,b) => a.balance - b.balance);
+    const settlements = [];
+    let i = 0, j = 0;
+    while (i < creditors.length && j < debtors.length) {
+      const credit = creditors[i].balance;
+      const debt   = Math.abs(debtors[j].balance);
+      const xfer   = Math.min(credit, debt);
+      settlements.push({ from: debtors[j].name, to: creditors[i].name, amt: xfer });
+      creditors[i].balance -= xfer;
+      debtors[j].balance   += xfer;
+      if (Math.abs(creditors[i].balance) < 0.005) i++;
+      if (Math.abs(debtors[j].balance)   < 0.005) j++;
+    }
+
+    // Render settlements
+    const sl = document.getElementById('settlement-list');
+    sl.innerHTML = '';
+    if (settlements.length === 0) {
+      sl.innerHTML = `<div class="no-settle"><span>🎉</span>Everyone is already settled up!</div>`;
+    } else {
+      settlements.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'settle-item';
+        item.style.animationDelay = `${idx * 0.06}s`;
+        item.innerHTML = `
+          <span class="payer">${s.from}</span>
+          <span class="arrow">→</span>
+          <span class="receiver">${s.to}</span>
+          <span class="amt">${fmt(s.amt)}</span>`;
+        sl.appendChild(item);
+      });
+    }
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.style.display = 'block';
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Init
+  addPerson();
+  addPerson();
+</script>
+</body>
+</html>
